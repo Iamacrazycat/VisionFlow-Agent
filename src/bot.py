@@ -33,6 +33,7 @@ class AutoRocoBot:
         self.miss_streak = 0
         self.in_battle_state = False
         self.last_trigger_time = 0.0
+        self.last_battle_time = 0.0
 
     def prompt_mode(self):
         logging.info("Starting detector. Stop hotkey: %s", CONFIG.stop_hotkey)
@@ -102,17 +103,17 @@ class AutoRocoBot:
                 frame_bgr = full_window_bgr[roi_top:roi_top+roi_h, roi_left:roi_left+roi_w]
                 frame_processed = preprocess(frame_bgr)
 
-                # Remember prior state
-                prior_state = self.in_battle_state
+                now = time.time()
                 detected, score, name = self._process_frame(frame_processed, scale)
 
-                # Increment valid battle count on the rising edge
-                if detected and not prior_state:
-                    new_count = increment_daily_battle()
-                    logging.info("=== 进入有效战斗！今日累计战斗次数: %d ===", new_count)
-
-                now = time.time()
                 if detected:
+                    # If it's been more than 15 seconds since we were last in a battle, it's a new encounter!
+                    if now - self.last_battle_time > 15.0:
+                        new_count = increment_daily_battle()
+                        logging.info("=== 确认进入新战斗！今日累计战斗次数: %d ===", new_count)
+                    
+                    self.last_battle_time = now
+                    
                     is_hit = score >= CONFIG.match_threshold
                     if is_hit and (now - self.last_trigger_time >= CONFIG.trigger_cooldown_sec):
                         self._decide_and_act(hwnd, full_window_bgr, width, height, scale, score, name, now)
