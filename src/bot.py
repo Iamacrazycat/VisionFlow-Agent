@@ -107,12 +107,6 @@ class AutoRocoBot:
                 detected, score, name = self._process_frame(frame_processed, scale)
 
                 if detected:
-                    # If it's been more than 15 seconds since we were last in a battle, it's a new encounter!
-                    if now - self.last_battle_time > 15.0:
-                        new_count = increment_daily_battle()
-                        logging.info("=== 确认进入新战斗！今日累计战斗次数: %d ===", new_count)
-                    
-                    self.last_battle_time = now
                     
                     is_hit = score >= CONFIG.match_threshold
                     if is_hit and (now - self.last_trigger_time >= CONFIG.trigger_cooldown_sec):
@@ -172,6 +166,11 @@ class AutoRocoBot:
             )
 
         if current_action == "battle":
+            if now - self.last_battle_time > 15.0:
+                new_count = increment_daily_battle()
+                logging.info("=== 确认进入新战斗！今日累计战斗次数: %d ===", new_count)
+            self.last_battle_time = now
+
             self._execute_battle(hwnd, current_action, score, name)
             self.last_trigger_time = time.time()
         elif current_action == "escape":
