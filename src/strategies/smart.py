@@ -31,42 +31,18 @@ class SmartStrategy(ActionStrategy):
         self._escape = EscapeStrategy(state, templates)
 
     def on_battle_detected(self, event: BattleDetectedEvent) -> None:
-        """ 战斗检测回调：首帧检测 HP 颜色决策，后续帧复用缓存 """
+        """ 战斗检测回调：依据状态机当前状态分发任务 """
+        from src.state import RobotState
+
         if not self.state.can_trigger(CONFIG.trigger_cooldown_sec):
             return
 
-        # 首帧：进行 HP 血条颜色检测
-        if self.state.is_new_battle():
-            action = detect_hp_bar_color(
-                event.full_frame,
-                self.templates,
-                event.scale,
-                valid_bgr=CONFIG.hp_valid_battle_bgr,
-                escape_bgr=CONFIG.hp_escape_bgr,
-                tolerance=CONFIG.hp_color_tolerance,
-            )
+        state = self.state.current_state
 
-            if action is None:
-                # HP 血条未找到或颜色不匹配目标，不做决策，等待下一帧
-                logging.debug("Smart Mode: HP bar uncertain, waiting for clearer frame...")
-                return 
-
-            if action == "battle":
-                logging.info("Smart Mode: Pink HP bar -> Valid Battle (Battle Mode)")
-            else:
-                logging.info("Smart Mode: Green HP bar -> Wild Encounter (Escape Mode)")
-
-            self.state.set_battle_action(action)
-
-            log_audit(
-                "SMART_MODE_HP_CHECK",
-                action_decided=action,
-            )
-
-        # 使用缓存的决策
-        current_action = self.state.current_battle_action
-
-        if current_action == "battle":
+        if state == RobotState.BATTLE_CHARGE:
             self._battle.on_battle_detected(event)
-        else:
+        elif state == RobotState.BATTLE_ESCAPE:
             self._escape.on_battle_detected(event)
+        else:
+            # 状态不明确或处于 NONE/OTHER，不执行任何动作
+            logging.debug("Smart Mode: State is %s, idling...", state.name)

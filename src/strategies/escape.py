@@ -11,7 +11,7 @@ from src.events import BattleDetectedEvent
 from src.state import BotState
 from src.strategies.base import ActionStrategy
 from src.input import press_once, click_at
-from src.vision import Template, best_yes_score_and_loc
+from src.vision import Template, best_yes_score_and_loc, map_to_window
 from src.window import capture_window_bgr
 from src.utils import log_audit
 from typing import List
@@ -40,7 +40,6 @@ class EscapeStrategy(ActionStrategy):
         hwnd = event.hwnd
         width = event.width
         height = event.height
-        scale = event.scale
 
         # 按下 ESC 键
         press_once(hwnd, "esc")
@@ -53,48 +52,31 @@ class EscapeStrategy(ActionStrategy):
             hwnd=hwnd,
             score=round(event.score, 4),
             template=event.template_name,
-            hit_streak=self.state.hit_streak,
-            miss_streak=self.state.miss_streak,
             cooldown_sec=CONFIG.trigger_cooldown_sec,
         )
 
         # 查找并点击确认按钮
         button_clicked = False
-        yes_best_score = -1.0
-        yes_best_loc = (0, 0)
-        yes_threshold = CONFIG.match_threshold * 0.8
+        yes_threshold = CONFIG.match_threshold * CONFIG.escape_yes_threshold_ratio
 
-        for i in range(10):
-            time.sleep(0.3)
+        for i in range(CONFIG.escape_max_attempts):
+            time.sleep(CONFIG.escape_retry_delay_sec)
             full_shot = capture_window_bgr(hwnd)
-            best_score_this_round, best_loc_this_round = best_yes_score_and_loc(
-                full_shot, self.templates, scale
-            )
+            score, loc = best_yes_score_and_loc(full_shot, self.templates)
 
-            if best_score_this_round > yes_best_score:
-                yes_best_score = best_score_this_round
-                yes_best_loc = best_loc_this_round
-
-            if best_score_this_round >= yes_threshold:
-                cap_h, cap_w = full_shot.shape[:2]
-                click_x = best_loc_this_round[0]
-                click_y = best_loc_this_round[1]
-                if cap_w > 0 and cap_h > 0 and (cap_w != width or cap_h != height):
-                    click_x = int(round(best_loc_this_round[0] * width / cap_w))
-                    click_y = int(round(best_loc_this_round[1] * height / cap_h))
-                    click_x = max(0, min(width - 1, click_x))
-                    click_y = max(0, min(height - 1, click_y))
-
-                click_ok = click_at(hwnd, click_x, click_y)
-                button_clicked = click_ok
-                if click_ok:
+            if score >= yes_threshold:
+                # 使用统一转换工具处理坐标映射
+                click_x, click_y = map_to_window(loc, full_shot.shape[:2], (height, width))
+                
+                if click_at(hwnd, click_x, click_y):
+                    button_clicked = True
                     log_audit(
                         "ESCAPE_YES_CLICK_SUCCESS",
                         mode=self.state.selected_mode,
                         hwnd=hwnd,
                         score=round(event.score, 4),
                         template=event.template_name,
-                        yes_score=round(best_score_this_round, 4),
+                        yes_score=round(score, 4),
                         threshold=round(yes_threshold, 4),
                         click_x=click_x,
                         click_y=click_y,
@@ -104,19 +86,18 @@ class EscapeStrategy(ActionStrategy):
                     break
 
         if not button_clicked:
-            logging.warning("Could not find confirmation button 'yes.png' after ESC")
+            logging.warning("Could not find confirmation button '%s' after ESC", CONFIG.yes_template_name)
             log_audit(
                 "ESCAPE_YES_CLICK_FAILED",
                 mode=self.state.selected_mode,
                 hwnd=hwnd,
                 score=round(event.score, 4),
                 template=event.template_name,
-                best_yes_score=round(yes_best_score, 4),
-                best_yes_x=yes_best_loc[0],
-                best_yes_y=yes_best_loc[1],
                 threshold=round(yes_threshold, 4),
                 click_method="physical",
             )
 
         # 逃跑有额外冷却
-        self.state.mark_triggered(extra_cooldown=3.0)
+        self.state.mark_triggered(extra_cooldown=CONFIG.escape_extra_cooldown_sec)
+        # 按照需求，“执行后回归空状态”
+        self.state.reset_to_none()

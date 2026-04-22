@@ -7,6 +7,7 @@ from src.strategies.base import ActionStrategy
 from src.strategies.battle import BattleStrategy
 from src.strategies.escape import EscapeStrategy
 from src.strategies.smart import SmartStrategy
+from src.strategies.stat import StatStrategy
 from src.events import EventBus
 from src.state import BotState
 from src.vision import Template
@@ -24,6 +25,8 @@ def create_strategy(
         strategy = EscapeStrategy(state, templates)
     elif mode == "smart":
         strategy = SmartStrategy(state, templates)
+    elif mode == "stat":
+        strategy = StatStrategy(state)
     else:
         strategy = BattleStrategy(state)
 

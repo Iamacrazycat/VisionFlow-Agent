@@ -21,7 +21,6 @@ class BattleDetectedEvent:
     full_frame: np.ndarray
     width: int
     height: int
-    scale: float
     score: float
     template_name: str
     timestamp: float

@@ -23,20 +23,20 @@ class BattleStrategy(ActionStrategy):
         self.state = state
 
     def on_battle_detected(self, event: BattleDetectedEvent) -> None:
-        """ 战斗检测回调：执行按键、检查冷却是以及统计战斗次数 """
+        """ 战斗检测回调：依据状态机执行按键逻辑 """
+        from src.state import RobotState
 
         if not self.state.can_trigger(CONFIG.trigger_cooldown_sec):
             return
 
-        # 判断是否为新战斗（首帧），更新统计
-        if self.state.is_new_battle():
-            new_count = increment_daily_battle()
-            logging.info("=== 确认进入新战斗！今日累计战斗次数: %d ===", new_count)
-            self.state.set_battle_action("battle")
+        # 统计逻辑：只有状态从非战斗切换过来时才增加计数
+        if self.state.last_non_none_state == RobotState.NON_BATTLE:
+             new_count = increment_daily_battle()
+             logging.info("=== 确认进入新战斗！今日累计战斗次数: %d ===", new_count)
 
         # 执行按键
         press_once(event.hwnd, CONFIG.press_key)
-        logging.info("Triggered key: %s (Continuous)", CONFIG.press_key)
+        logging.info("Triggered key: %s (State: %s)", CONFIG.press_key, self.state.current_state.name)
 
         log_audit(
             "TRIGGER_BATTLE_KEY",
@@ -46,9 +46,9 @@ class BattleStrategy(ActionStrategy):
             hwnd=event.hwnd,
             score=round(event.score, 4),
             template=event.template_name,
-            hit_streak=self.state.hit_streak,
-            miss_streak=self.state.miss_streak,
             cooldown_sec=CONFIG.trigger_cooldown_sec,
         )
 
         self.state.mark_triggered()
+        # 按照需求，“执行后回归空状态”，以便下一帧重新通过状态机判定逻辑
+        self.state.reset_to_none()

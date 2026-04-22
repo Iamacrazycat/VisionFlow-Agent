@@ -3,6 +3,8 @@ import logging
 import win32api
 import win32con
 
+from config import CONFIG
+
 try:
     import win32gui
 except ImportError:
@@ -33,7 +35,7 @@ def press_once(hwnd: int, key: str) -> None:
     lparam_up = 1 | (scan_code << 16) | (1 << 30) | (1 << 31)
     
     win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, lparam_down)
-    time.sleep(0.05)  # Brief delay to simulate human press duration
+    time.sleep(CONFIG.input_key_duration_sec)  # Brief delay to simulate human press duration
     win32gui.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, lparam_up)
 
 
@@ -49,11 +51,11 @@ def click_at(hwnd: int, x: int, y: int) -> bool:
         screen_pos = win32gui.ClientToScreen(hwnd, (x, y))
         # Use win32api to perform a physical mouse click
         win32api.SetCursorPos(screen_pos)
-        time.sleep(0.1)
+        time.sleep(CONFIG.input_mouse_delay_sec)
         # mouse_event uses specific flags for down and up
         # LEFTDOWN = 0x0002, LEFTUP = 0x0004
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        time.sleep(0.1)
+        time.sleep(CONFIG.input_mouse_delay_sec)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
         logging.info("Performed physical click at screen pos %s", screen_pos)
         return True
