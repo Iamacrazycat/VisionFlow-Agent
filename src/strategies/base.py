@@ -4,7 +4,7 @@ ActionStrategy 抽象基类。
 所有动作策略（聚能、逃跑、智能）都实现此接口。
 """
 from abc import ABC, abstractmethod
-from src.events import EventBus, BattleDetectedEvent
+from src.events import EventBus, LifecycleTriggerEvent
 
 
 class ActionStrategy(ABC):
@@ -13,11 +13,11 @@ class ActionStrategy(ABC):
     def register(self, event_bus: EventBus) -> None:
         """ 在事件总线上注册该策略感兴趣的事件 """
 
-        """将自身注册到事件总线，订阅 BattleDetectedEvent。"""
-        event_bus.subscribe(BattleDetectedEvent, self.on_battle_detected)
+        """将自身注册到事件总线，订阅 LifecycleTriggerEvent。"""
+        event_bus.subscribe(LifecycleTriggerEvent, self.on_battle_detected)
 
     @abstractmethod
-    def on_battle_detected(self, event: BattleDetectedEvent) -> None:
+    def on_battle_detected(self, event: LifecycleTriggerEvent) -> None:
         """ 抽象回调方法：当检测到战斗时触发该策略的具体逻辑 """
 
         """

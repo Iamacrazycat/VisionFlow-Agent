@@ -7,7 +7,7 @@ import time
 import logging
 
 from config import CONFIG
-from src.events import BattleDetectedEvent
+from src.events import LifecycleTriggerEvent
 from src.state import BotState
 from src.strategies.base import ActionStrategy
 from src.input import press_once, click_at
@@ -26,7 +26,7 @@ class EscapeStrategy(ActionStrategy):
         self.state = state
         self.templates = templates
 
-    def on_battle_detected(self, event: BattleDetectedEvent) -> None:
+    def on_battle_detected(self, event: LifecycleTriggerEvent) -> None:
         """ 战斗检测回调：触发逃跑动作逻辑 """
 
         if not self.state.can_trigger(CONFIG.trigger_cooldown_sec):
@@ -34,7 +34,7 @@ class EscapeStrategy(ActionStrategy):
 
         self._execute_escape(event)
 
-    def _execute_escape(self, event: BattleDetectedEvent) -> None:
+    def _execute_escape(self, event: LifecycleTriggerEvent) -> None:
         """ 私有方法：执行具体的按键模拟和按钮匹配逻辑 """
 
         hwnd = event.hwnd
@@ -60,6 +60,8 @@ class EscapeStrategy(ActionStrategy):
         yes_threshold = CONFIG.match_threshold * CONFIG.escape_yes_threshold_ratio
 
         for i in range(CONFIG.escape_max_attempts):
+            if not CONFIG.is_running:
+                break
             time.sleep(CONFIG.escape_retry_delay_sec)
             full_shot = capture_window_bgr(hwnd)
             score, loc = best_yes_score_and_loc(full_shot, self.templates)

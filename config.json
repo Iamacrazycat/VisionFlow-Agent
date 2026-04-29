@@ -1,0 +1,57 @@
+{
+    "window_title_keyword": "洛克王国：世界",
+    "poll_interval_sec": 3,
+    "press_key": "x",
+    "trigger_cooldown_sec": 1,
+    "match_threshold": 0.5,
+    "required_hits": 1,
+    "release_misses": 2,
+    "hp_charge_targets": [
+        [
+            161,
+            63,
+            255
+        ],
+        [
+            114,
+            41,
+            114
+        ]
+    ],
+    "hp_escape_bgr": [
+        21,
+        198,
+        115
+    ],
+    "hp_color_tolerance": 65,
+    "hp_color_margin_x_ratio": 6,
+    "hp_color_margin_y_ratio": 4,
+    "hp_template_name": "HP.png",
+    "hp_roi_ratio_x": 0.66,
+    "hp_roi_ratio_y": 0.5,
+    "sift_lowe_ratio": 0.8,
+    "sift_min_match_count": 4,
+    "sift_ransac_threshold": 5,
+    "escape_click_method": "physical",
+    "yes_template_name": "yes.png",
+    "escape_yes_threshold_ratio": 0.8,
+    "escape_max_attempts": 10,
+    "escape_retry_delay_sec": 0.3,
+    "escape_extra_cooldown_sec": 3,
+    "input_key_duration_sec": 0.05,
+    "input_mouse_delay_sec": 0.1,
+    "template_dir": "templates",
+    "template_pattern": "*.png",
+    "log_dir": "logs",
+    "debug_image_dir": "logs/debug_images",
+    "debug_save_images": false,
+    "debug_save_threshold": 0.2,
+    "sift_match_threshold": 0.5,
+    "runtime_log_name": "runtime.log",
+    "audit_log_name": "audit.log",
+    "web_port": 5001,
+    "active_sequence": "default.json",
+    "sequence_dir": "sequences",
+    "running_mode": "custom",
+    "is_running": false
+}

@@ -8,13 +8,13 @@ import logging
 import numpy as np
 
 from config import CONFIG
-from src.events import EventBus, BattleDetectedEvent, BattleEndedEvent
+from src.events import EventBus, LifecycleTriggerEvent, LifecycleEndedEvent
 from src.state import BotState
 from src.vision import Template
 from typing import List
 
 
-class BattleDetector:
+class VisionOrchestratorDetector:
     """ 战斗检测器：分析帧画面、维护检测状态并在状态变化时发布事件 """
 
     def __init__(
@@ -40,7 +40,7 @@ class BattleDetector:
     ) -> None:
         """ 核心检测逻辑：星号 (非战斗) -> 背包 (战斗判定) -> HP (动作判定) """
         from src.vision import detect_state_icon, detect_hp_bar_color
-        from src.state import RobotState
+        from src.state import AgentState
         from src.utils import save_debug_image
         import time
 
@@ -52,8 +52,13 @@ class BattleDetector:
             save_debug_image(full_frame, "star_check", star_score, star_loc, star_size)
 
         if star_score >= CONFIG.match_threshold:
-            if self.state.current_state != RobotState.NON_BATTLE:
-                self.state.set_state(RobotState.NON_BATTLE)
+            if self.state.current_state != AgentState.IDLE:
+                self.state.set_state(AgentState.IDLE)
+            
+            # 发布非战斗检测事件
+            self.event_bus.publish(NonLifecycleTriggerEvent(
+                hwnd=hwnd, full_frame=full_frame, timestamp=time.time()
+            ))
             return
 
         # 2. 判定是否处于“战斗界面” (右下角 ROI，使用 exchange.png 包裹)
@@ -91,41 +96,46 @@ class BattleDetector:
 
         if in_battle_ui:
             # 状态判定逻辑：基于最新的 decided_action
-            if self.state.last_non_none_state == RobotState.NON_BATTLE:
+            if self.state.last_non_none_state == AgentState.IDLE:
                 if decided_action == "battle":
-                    self.state.set_state(RobotState.BATTLE_CHARGE)
+                    self.state.set_state(AgentState.LIFECYCLE_A)
                 elif decided_action == "escape":
-                    self.state.set_state(RobotState.BATTLE_ESCAPE)
+                    self.state.set_state(AgentState.LIFECYCLE_B)
                 else:
-                    self.state.set_state(RobotState.NONE)
+                    self.state.set_state(AgentState.NONE)
             
-            elif self.state.last_non_none_state in [RobotState.BATTLE_CHARGE, RobotState.BATTLE_ESCAPE]:
-                if decided_action == "battle" and self.state.current_state == RobotState.BATTLE_ESCAPE:
+            elif self.state.last_non_none_state in [AgentState.LIFECYCLE_A, AgentState.LIFECYCLE_B]:
+                if decided_action == "battle" and self.state.current_state == AgentState.LIFECYCLE_B:
                     logging.warning("State Correction: Escape -> Charge detected via color!")
-                    self.state.set_state(RobotState.BATTLE_CHARGE)
-                elif decided_action == "escape" and self.state.current_state == RobotState.BATTLE_CHARGE:
+                    self.state.set_state(AgentState.LIFECYCLE_A)
+                elif decided_action == "escape" and self.state.current_state == AgentState.LIFECYCLE_A:
                     logging.warning("State Correction: Charge -> Escape detected via color!")
-                    self.state.set_state(RobotState.BATTLE_ESCAPE)
+                    self.state.set_state(AgentState.LIFECYCLE_B)
                 
-                elif self.state.current_state == RobotState.NONE:
+                elif self.state.current_state == AgentState.NONE:
                     self.state.set_state(self.state.last_non_none_state)
             
-            elif self.state.current_state == RobotState.NONE:
-                if decided_action == "battle": self.state.set_state(RobotState.BATTLE_CHARGE)
-                elif decided_action == "escape": self.state.set_state(RobotState.BATTLE_ESCAPE)
+            elif self.state.current_state == AgentState.NONE:
+                if decided_action == "battle": self.state.set_state(AgentState.LIFECYCLE_A)
+                elif decided_action == "escape": self.state.set_state(AgentState.LIFECYCLE_B)
 
             # 发布战斗检测事件
-            if self.state.current_state in [RobotState.BATTLE_CHARGE, RobotState.BATTLE_ESCAPE]:
-                self.event_bus.publish(BattleDetectedEvent(
+            if self.state.current_state in [AgentState.LIFECYCLE_A, AgentState.LIFECYCLE_B]:
+                self.event_bus.publish(LifecycleTriggerEvent(
                     hwnd=hwnd, full_frame=full_frame, width=width, height=height,
                     score=ex_score, template_name="exchange.png", timestamp=time.time()
                 ))
             return
 
         # 4. 既无星号也无战斗图标，回归 NONE
-        if self.state.current_state != RobotState.NONE:
-            self.state.set_state(RobotState.NONE)
+        if self.state.current_state != AgentState.NONE:
+            self.state.set_state(AgentState.NONE)
             
         # 如果从战斗态退出，发布结束事件
-        if self.state.last_non_none_state in [RobotState.BATTLE_CHARGE, RobotState.BATTLE_ESCAPE]:
-            self.event_bus.publish(BattleEndedEvent(timestamp=time.time()))
+        if self.state.last_non_none_state in [AgentState.LIFECYCLE_A, AgentState.LIFECYCLE_B]:
+            self.event_bus.publish(LifecycleEndedEvent(timestamp=time.time()))
+
+        # 发布其他状态事件
+        self.event_bus.publish(OtherStateDetectedEvent(
+            hwnd=hwnd, full_frame=full_frame, timestamp=time.time()
+        ))

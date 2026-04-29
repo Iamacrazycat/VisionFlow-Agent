@@ -10,7 +10,7 @@
 import logging
 
 from config import CONFIG
-from src.events import BattleDetectedEvent
+from src.events import LifecycleTriggerEvent
 from src.state import BotState
 from src.strategies.base import ActionStrategy
 from src.strategies.battle import BattleStrategy
@@ -30,18 +30,18 @@ class SmartStrategy(ActionStrategy):
         self._battle = BattleStrategy(state)
         self._escape = EscapeStrategy(state, templates)
 
-    def on_battle_detected(self, event: BattleDetectedEvent) -> None:
+    def on_battle_detected(self, event: LifecycleTriggerEvent) -> None:
         """ 战斗检测回调：依据状态机当前状态分发任务 """
-        from src.state import RobotState
+        from src.state import AgentState
 
         if not self.state.can_trigger(CONFIG.trigger_cooldown_sec):
             return
 
         state = self.state.current_state
 
-        if state == RobotState.BATTLE_CHARGE:
+        if state == AgentState.LIFECYCLE_A:
             self._battle.on_battle_detected(event)
-        elif state == RobotState.BATTLE_ESCAPE:
+        elif state == AgentState.LIFECYCLE_B:
             self._escape.on_battle_detected(event)
         else:
             # 状态不明确或处于 NONE/OTHER，不执行任何动作

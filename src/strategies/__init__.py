@@ -8,6 +8,7 @@ from src.strategies.battle import BattleStrategy
 from src.strategies.escape import EscapeStrategy
 from src.strategies.smart import SmartStrategy
 from src.strategies.stat import StatStrategy
+from src.strategies.custom import CustomSequenceStrategy
 from src.events import EventBus
 from src.state import BotState
 from src.vision import Template
@@ -27,6 +28,8 @@ def create_strategy(
         strategy = SmartStrategy(state, templates)
     elif mode == "stat":
         strategy = StatStrategy(state)
+    elif mode == "custom":
+        strategy = CustomSequenceStrategy(event_bus, state, templates)
     else:
         strategy = BattleStrategy(state)
 

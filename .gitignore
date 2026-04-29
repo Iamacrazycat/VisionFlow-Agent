@@ -25,3 +25,7 @@ image.png
 *.new
 
 run.bat
+templates/
+sequences/
+debug/
+screenshots/

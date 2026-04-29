@@ -6,7 +6,7 @@
 import logging
 
 from config import CONFIG
-from src.events import BattleDetectedEvent
+from src.events import LifecycleTriggerEvent
 from src.state import BotState
 from src.strategies.base import ActionStrategy
 from src.input import press_once
@@ -22,17 +22,17 @@ class BattleStrategy(ActionStrategy):
 
         self.state = state
 
-    def on_battle_detected(self, event: BattleDetectedEvent) -> None:
+    def on_battle_detected(self, event: LifecycleTriggerEvent) -> None:
         """ 战斗检测回调：依据状态机执行按键逻辑 """
-        from src.state import RobotState
+        from src.state import AgentState
 
         if not self.state.can_trigger(CONFIG.trigger_cooldown_sec):
             return
 
         # 统计逻辑：只有状态从非战斗切换过来时才增加计数
-        if self.state.last_non_none_state == RobotState.NON_BATTLE:
+        if self.state.last_non_none_state == AgentState.IDLE:
              new_count = increment_daily_battle()
-             logging.info("=== 确认进入新战斗！今日累计战斗次数: %d ===", new_count)
+             logging.info("=== 触发新生命周期！今日累计调度次数: %d ===", new_count)
 
         # 执行按键
         press_once(event.hwnd, CONFIG.press_key)

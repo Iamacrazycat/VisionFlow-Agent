@@ -15,7 +15,7 @@ import numpy as np
 # ────────────────────────────────────────────────────────────
 
 @dataclass
-class BattleDetectedEvent:
+class LifecycleTriggerEvent:
     """ 匹配到战斗状态时的事件数据类 """
     hwnd: int
     full_frame: np.ndarray
@@ -27,8 +27,24 @@ class BattleDetectedEvent:
 
 
 @dataclass
-class BattleEndedEvent:
+class LifecycleEndedEvent:
     """ 战斗结束时的事件数据类 """
+    timestamp: float
+
+
+@dataclass
+class NonLifecycleTriggerEvent:
+    """ 匹配到非战斗状态（探索状态）时的事件数据类 """
+    hwnd: int
+    full_frame: np.ndarray
+    timestamp: float
+
+
+@dataclass
+class OtherStateDetectedEvent:
+    """ 匹配到其他未知状态时的事件数据类 """
+    hwnd: int
+    full_frame: np.ndarray
     timestamp: float
 
 

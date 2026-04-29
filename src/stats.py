@@ -47,3 +47,8 @@ def get_daily_battle_count() -> int:
 
     data = load_stats()
     return data.get(get_today_date_str(), 0)
+
+def clear_stats() -> None:
+    """ 清除所有战斗统计记录 """
+    save_stats({})
+    logging.info("Battle statistics cleared.")
